@@ -3,7 +3,8 @@
 #define KEY_DOWN(VK_NONAME) ((GetAsyncKeyState(VK_NONAME) & 0x8000) ? 1:0)
 
 sendOperation::sendOperation() {
-	data = new char[50];
+	dataSize = 200;
+	data = new char[dataSize];
 	targetX = 1920;
 	targetY = 1080;
 }
@@ -38,17 +39,13 @@ void sendOperation::pointToChar(POINT& mouse) {
 }
 
 void sendOperation::getOperation() {
-	if (KEY_DOWN(MOUSE_MOVED)) {
-		data[0] = 1;
-	}
-	else {
-		data[0] = 0;
-	}
-	if (KEY_DOWN(MOUSE_EVENT)) {
-		data[10] = 1;
-	}
-	else {
-		data[10] = 0;
+	for (int i = 0x1; i <= 0x91; i++) {
+		if (KEY_DOWN(i)) {
+			data[i + 20] = 1;
+		}
+		else {
+			data[i + 20] = 0;
+		}
 	}
 }
 
@@ -84,7 +81,7 @@ void sendOperation::sendOper() {
 			mouse.y = (int)(((double)mouse.y) * targetY / (double)window_sizeY);
 			getOperation();
 			pointToChar(mouse);
-			send(sendSocket, data, 50, 0);
+			send(sendSocket, data, dataSize, 0);
 		}
 		Sleep(10);
 	}

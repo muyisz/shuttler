@@ -8,6 +8,7 @@ private:
 	int leftStatic;
 	int rightStatic;
 	int dataSize;
+	int* virtualKeyboard;
 	char* data;
 	char* dataUse;
 	char* clientIP;
@@ -23,5 +24,6 @@ public:
 	void getSocket();
 	void setClientIP(char[]);
 	void setHEvent(HANDLE);
+	void performOperation();
 };
 

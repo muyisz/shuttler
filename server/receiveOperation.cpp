@@ -1,17 +1,19 @@
 #include "receiveOperation.h"
 #include <cstdio>
+#include <cstring>
 
 receiveOperation::receiveOperation() {
-	leftStatic = 0;
-	rightStatic = 0;
-	dataSize = 50;
+	dataSize = 200;
 	data = new char[dataSize];
 	dataUse = new char[dataSize];
+	virtualKeyboard = new int[dataSize];
+	memset(virtualKeyboard, 0, dataSize * sizeof(int));
 }
 
 receiveOperation::~receiveOperation() {
 	delete[]data;
 	delete[]dataUse;
+	delete[]virtualKeyboard;
 }
 
 void receiveOperation::copyData(int k,int begin) {
@@ -81,28 +83,38 @@ void receiveOperation::getData() {
 		} while (true);
 		POINT mouse;
 		charToPoint(mouse);
-		if (leftStatic == 1 && dataUse[0] == 0) {
-			printf("×ó¼üÌ§Æð\n");
-			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-			leftStatic = 0;
-		}
-		else if (leftStatic == 0 && dataUse[0] == 1) {
-			printf("×ó¼ü°´ÏÂ\n");
-			mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-			leftStatic = 1;
-		}
-		if (rightStatic == 1 && dataUse[10] == 0) {
-			printf("ÓÒ¼üÌ§Æð\n");
-			mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-			rightStatic = 0;
-		}
-		else if (rightStatic == 0 && dataUse[10] == 1) {
-			printf("ÓÒ¼ü°´ÏÂ\n");
-			mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
-			rightStatic = 1;
-		}
-		//	printf("%d %d\n", mouse.x, mouse.y);
 		SetCursorPos(mouse.x, mouse.y);
+		performOperation();
+	}
+}
+
+void receiveOperation::performOperation() {
+	if (virtualKeyboard[0x1+20] == 1 && dataUse[0x1 + 20] == 0) {
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+		virtualKeyboard[0x1 + 20] = 0;
+	}
+	else if (virtualKeyboard[0x1 + 20] == 0 && dataUse[0x1 + 20] == 1) {
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+		virtualKeyboard[0x1 + 20] = 1;
+	}
+	if (virtualKeyboard[0x2+20] == 1 && dataUse[0x2 + 20] == 0) {
+		mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+		virtualKeyboard[0x2 + 20] = 0;
+	}
+	else if (virtualKeyboard[0x2 + 20] == 0 && dataUse[0x2 + 20] == 1) {
+		mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+		virtualKeyboard[0x2 + 20] = 1;
+	}
+	for (int i = 0x1 + 2; i <= 0x91; i++) {
+		int k = i + 20;
+		if (virtualKeyboard[k] == 1 && dataUse[k] == 0) {
+			keybd_event(i, 0, KEYEVENTF_KEYUP, 0);
+			virtualKeyboard[k] = 0;
+		}
+		else if (virtualKeyboard[k] == 0 && dataUse[k] == 1) {
+			keybd_event(i, 0, 0, 0);
+			virtualKeyboard[k] = 1;
+		}
 	}
 }
 

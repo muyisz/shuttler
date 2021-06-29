@@ -3,6 +3,7 @@
 class sendOperation
 {
 private:
+	int dataSize;
 	char* data;
 	char* serverIP;
 	int targetX;
