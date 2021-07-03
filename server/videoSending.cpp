@@ -5,7 +5,7 @@
 
 videoSending::videoSending() {
 	screenshots = new screenShots;
-	bufferSize = 3000000;
+	bufferSize = 5000000;
 	buffer = new char[bufferSize];
 	sendSize = new char[10];
 }

@@ -12,17 +12,13 @@ private:
 	SOCKET recvSocket;
 	int bufferSize;
 	char* buffer;
-	char* buffer_;
 	HANDLE hEvent;
 public:
 	getVideo();
 	~getVideo();
-	void bufferMerge(int,int);
 	void SetHEvent(HANDLE);
 	void recvVideo();
 	void getSocket();
 	void setServerIP(char[]);
-	void rebuffer(int, int);
 	int charToInt();
 };
-

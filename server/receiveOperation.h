@@ -9,7 +9,6 @@ private:
 	int rightStatic;
 	int dataSize;
 	int* virtualKeyboard;
-	char* data;
 	char* dataUse;
 	char* clientIP;
 	SOCKET recvSocket;
@@ -17,8 +16,6 @@ private:
 public:
 	receiveOperation();
 	~receiveOperation();
-	void copyData(int, int);
-	void rebuffer(int, int);
 	void charToPoint(POINT&);
 	void getData();
 	void getSocket();

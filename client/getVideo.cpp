@@ -2,14 +2,12 @@
 #pragma warning(disable:4996)
 
 getVideo::getVideo() {
-	bufferSize = 3000000;
+	bufferSize = 5000000;
 	buffer = new char[bufferSize];
-	buffer_ = new char[bufferSize];
 }
 
 getVideo::~getVideo() {
 	delete[]buffer;
-	delete[]buffer_;
 }
 
 void getVideo::SetHEvent(HANDLE h) {
@@ -26,18 +24,6 @@ int getVideo::charToInt() {
 	return k;
 }
 
-void getVideo::bufferMerge(int n,int begin) {
-	for (int i = 0; i < n; i++) {
-		buffer[begin + i] = buffer_[i];
-	}
-}
-
-void getVideo::rebuffer(int k, int len) {
-	for (int i = 0; i < len - k; i++) {
-		buffer[i] = buffer[i + k];
-	}
-}
-
 void getVideo::recvVideo() {
 	std::cout << "start recv!" << std::endl;
 	cv::namedWindow("¿ØÖÆ", cv::WINDOW_NORMAL);
@@ -48,48 +34,21 @@ void getVideo::recvVideo() {
 	int flag = 0;
 	SetEvent(hEvent);
 	while (1) {
-		while (flag < 10) {
-			readLen = recv(recvSocket, buffer_, bufferSize, 0);
-			bufferMerge(readLen, flag);
-			size += readLen;
-			flag += readLen;
-		}
-		img_size = charToInt();
-		rebuffer(10, flag);
-		flag -= 10;
-		size = flag;
 		std::ofstream desFile;
 		desFile.open(desFileName, std::ios::binary);
-		if (flag) {
-			desFile.write(buffer, flag);
-			flag = 0;
+		int getSize = 10;
+		int pos = 0;
+		while (pos < getSize) {
+			int len0 = recv(recvSocket, buffer + pos, getSize - pos, 0);
+			pos += len0;
 		}
-		readLen = 0;
-		do
-		{
-			readLen = recv(recvSocket, buffer, bufferSize, 0);
-			if (size + readLen <= img_size) {
-				desFile.write(buffer, readLen);
-				size += readLen;
-				if (size == img_size) {
-					size = 0;
-					flag = 0;
-					break;
-				}
-			}
-			else
-			{
-				charToInt();
-				int k = (img_size - size);
-				size += k;
-				desFile.write(buffer, k);
-				size = readLen - k;
-				rebuffer(k, readLen);
-				flag = size;
-				break;
-			}
-
-		} while (true);
+		pos = 0;
+		int fileSize = charToInt();
+		while (pos < fileSize) {
+			int len0 = recv(recvSocket, buffer + pos, fileSize - pos, 0);
+			pos += len0;
+		}
+		desFile.write(buffer, fileSize);
 		cv::Mat img;
 		desFile.close();
 		img = cv::imread(desFileName, 1);

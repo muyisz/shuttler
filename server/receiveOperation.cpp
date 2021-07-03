@@ -4,28 +4,14 @@
 
 receiveOperation::receiveOperation() {
 	dataSize = 200;
-	data = new char[dataSize];
 	dataUse = new char[dataSize];
 	virtualKeyboard = new int[dataSize];
 	memset(virtualKeyboard, 0, dataSize * sizeof(int));
 }
 
 receiveOperation::~receiveOperation() {
-	delete[]data;
 	delete[]dataUse;
 	delete[]virtualKeyboard;
-}
-
-void receiveOperation::copyData(int k,int begin) {
-	for (int i = begin; i < k; i++) {
-		dataUse[i] = data[i];
-	}
-}
-
-void receiveOperation::rebuffer(int k, int len) {
-	for (int i = 0; i < len - k; i++) {
-		data[i] = data[i + k];
-	}
 }
 
 void receiveOperation::charToPoint(POINT& mouse) {
@@ -47,40 +33,13 @@ void receiveOperation::charToPoint(POINT& mouse) {
 
 void receiveOperation::getData() {
 	printf("start recv!");
-	int readLen = 0;
-	int size = 0;
-	int flag = 0;
+	int pos;
 	while (1) {
-		int begin = 0;
-		if (flag) {
-			copyData(flag, begin);
-			begin += flag;
-			flag = 0;
+		pos = 0;
+		while (pos < dataSize) {
+			int len0 = recv(recvSocket, dataUse + pos, dataSize - pos, 0);
+			pos += len0;
 		}
-		do
-		{
-			readLen = recv(recvSocket, data, dataSize, 0);
-			if (size + readLen <= dataSize) {
-				copyData(readLen, begin);
-				size += readLen;
-				begin += readLen;
-				if (size == dataSize) {
-					size = 0;
-					flag = 0;
-					break;
-				}
-			}
-			else {
-				int k = (dataSize - size);
-				size += k;
-				copyData(k, begin);
-				size = readLen - k;
-				rebuffer(k, readLen);
-				flag = size;
-				break;
-			}
-
-		} while (true);
 		POINT mouse;
 		charToPoint(mouse);
 		SetCursorPos(mouse.x, mouse.y);
