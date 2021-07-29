@@ -4,8 +4,10 @@
 #include "screenShots.h"
 
 videoSending::videoSending() {
+	wigth = 1920;
+	high = 1080;
 	screenshots = new screenShots;
-	bufferSize = 5000000;
+	bufferSize = 50000000;
 	buffer = new char[bufferSize];
 	sendSize = new char[10];
 }
@@ -24,13 +26,49 @@ int videoSending::getFileSize(const char* strFileName) {
 	return size;
 }
 
+void videoSending::setBuffer(cv::Mat last, cv::Mat next, int size, int x, int y) {//74Î»Ò»¸ö¿é
+	int sum = size;
+	sizeToChar(x * 10000 + y, size);
+	size += 10;
+	for (int insideX = 0; insideX < 8; insideX++) {
+		for (int insideY = 0; insideY < 8; insideY++) {
+			int pos = (((y + insideY) * wigth) + (x + insideX));
+			buffer[size++] = next.data[pos];
+		}
+	}
+}
+int videoSending::makeCode(cv::Mat last, cv::Mat next) {
+	int size = 10;
+	unsigned char* lastData = last.data;
+	unsigned char* nextData = next.data;
+	for (int x = 0; x < wigth; x += 8) {
+		for (int y = 0; y < high * 3; y += 8) {
+			for (int insideX = 0; insideX < 8; insideX++) {
+				int flag = 0;
+				for (int insideY = 0; insideY < 8; insideY++) {
+					int pos = (((y + insideY) * wigth) + (x + insideX));
+					if (lastData[pos] != nextData[pos]) {
+						setBuffer(last, next, size, x, y);
+						size += 74;
+						flag = 1;
+						break;
+					}
+				}
+				if (flag = 1)
+					break;
+			}
+		}
+	}
+	return size;
+}
+
 void videoSending::setClientIP(char IP[]) {
 	clientIP = IP;
 }
 
-void videoSending::sizeToChar(int size) {
+void videoSending::sizeToChar(int size, int pos) {//10 
 	for (int i = 9; i >= 0; i--) {
-		sendSize[i] = size % 10 + '0';
+		buffer[i + pos] = size % 10 + '0';
 		size /= 10;
 	}
 }
@@ -41,20 +79,30 @@ void videoSending::sendVideo() {
 	int readLen = 0;
 	char srcFileName[10] = "6.png";
 	SetEvent(hEvent);
+	haveSend = 0;
+	screenshots->printBmp(srcFileName);
+	std::ifstream srcFile;
+	int size = getFileSize(srcFileName);
+	sizeToChar(size, 0);
+	send(sendSocket, buffer, 10, 0);
+	srcFile.open(srcFileName, std::ios::binary);
+	while (!srcFile.eof()) {
+		srcFile.read(buffer, bufferSize);
+		readLen = srcFile.gcount();
+		send(sendSocket, buffer, readLen, 0);
+		haveSend += readLen;
+	}
+	cv::Mat last;
+	cv::Mat next;
 	while (1) {
-		haveSend = 0;
+		last = cv::imread(srcFileName, 1);
 		screenshots->printBmp(srcFileName);
-		std::ifstream srcFile;
-		int size = getFileSize(srcFileName);
-		sizeToChar(size);
-		send(sendSocket, sendSize, 10, 0);
-		srcFile.open(srcFileName, std::ios::binary);
-		while (!srcFile.eof()) {
-			srcFile.read(buffer, bufferSize);
-			readLen = srcFile.gcount();
-			send(sendSocket, buffer, readLen, 0);
-			haveSend += readLen;
-		}
+		next = cv::imread(srcFileName, 1);
+		size = makeCode(last, next);
+		sizeToChar(size, 0);
+		printf("%d\n", size);
+		send(sendSocket, buffer, size, 0);
+		Sleep(20);
 	}
 }
 
