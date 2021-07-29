@@ -42,8 +42,8 @@ void receiveOperation::getData() {
 		}
 		POINT mouse;
 		charToPoint(mouse);
-	//	SetCursorPos(mouse.x, mouse.y);
-	//	performOperation();
+		SetCursorPos(mouse.x, mouse.y);
+		performOperation();
 	}
 }
 
