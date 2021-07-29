@@ -2,8 +2,10 @@
 #pragma warning(disable:4996)
 
 getVideo::getVideo() {
-	bufferSize = 5000000;
+	bufferSize = 50000000;
 	buffer = new char[bufferSize];
+	wigth = 1920;
+	high = 1080;
 }
 
 getVideo::~getVideo() {
@@ -14,11 +16,11 @@ void getVideo::SetHEvent(HANDLE h) {
 	hEvent = h;
 }
 
-int getVideo::charToInt() {
+int getVideo::charToInt(int pos) {
 	int k = 0;
 	int b = 1000000000;
 	for (int i = 0; i < 10; i++) {
-		k += (buffer[i] - '0') * b;
+		k += (buffer[i + pos] - '0') * b;
 		b /= 10;
 	}
 	return k;
@@ -33,25 +35,52 @@ void getVideo::recvVideo() {
 	int size = 0;
 	int flag = 0;
 	SetEvent(hEvent);
+
+	std::ofstream desFile;
+	desFile.open(desFileName, std::ios::binary);
+	int getSize = 10;
+	int pos = 0;
+	while (pos < getSize) {
+		int len0 = recv(recvSocket, buffer + pos, getSize - pos, 0);
+		pos += len0;
+	}
+	pos = 0;
+	int fileSize = charToInt(0);
+	while (pos < fileSize) {
+		int len0 = recv(recvSocket, buffer + pos, fileSize - pos, 0);
+		pos += len0;
+	}
+	desFile.write(buffer, fileSize);
+	cv::Mat img;
+	desFile.close();
+	img = cv::imread(desFileName, 1);
+	imshow("¿ØÖÆ", img);
+	cv::waitKey(10);
 	while (1) {
-		std::ofstream desFile;
-		desFile.open(desFileName, std::ios::binary);
-		int getSize = 10;
 		int pos = 0;
 		while (pos < getSize) {
 			int len0 = recv(recvSocket, buffer + pos, getSize - pos, 0);
 			pos += len0;
 		}
 		pos = 0;
-		int fileSize = charToInt();
+		int fileSize = charToInt(0);
+		fileSize -= 10;
 		while (pos < fileSize) {
 			int len0 = recv(recvSocket, buffer + pos, fileSize - pos, 0);
 			pos += len0;
 		}
-		desFile.write(buffer, fileSize);
-		cv::Mat img;
-		desFile.close();
-		img = cv::imread(desFileName, 1);
+		for (int i = 0; i < fileSize; i += 74) {
+			int pos = charToInt(i);
+			int x = pos / 10000;
+			int y = pos % 10000;
+			int size = i + 10;
+			for (int insideX = 0; insideX < 8; insideX++) {
+				for (int insideY = 0; insideY < 8; insideY++) {	
+					int pos = (((y + insideY) * wigth) + (x + insideX));
+					img.data[pos] = buffer[size++];
+				}
+			}
+		}
 		imshow("¿ØÖÆ", img);
 		cv::waitKey(10);
 	}

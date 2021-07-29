@@ -13,6 +13,8 @@ private:
 	int bufferSize;
 	char* buffer;
 	HANDLE hEvent;
+	int wigth;
+	int high;
 public:
 	getVideo();
 	~getVideo();
@@ -20,5 +22,5 @@ public:
 	void recvVideo();
 	void getSocket();
 	void setServerIP(char[]);
-	int charToInt();
+	int charToInt(int);
 };
