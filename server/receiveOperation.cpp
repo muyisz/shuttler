@@ -32,7 +32,7 @@ void receiveOperation::charToPoint(POINT& mouse) {
 }
 
 void receiveOperation::getData() {
-	printf("start recv!");
+	printf("start recv!\n");
 	int pos;
 	while (1) {
 		pos = 0;

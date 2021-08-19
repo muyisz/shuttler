@@ -8,6 +8,7 @@
 class getVideo
 {
 private:
+	int blockSize;
 	char* serverIP;
 	SOCKET recvSocket;
 	int bufferSize;

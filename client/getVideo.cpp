@@ -4,10 +4,11 @@
 getVideo::getVideo() {
 	bufferSize = 50000000;
 	buffer = new char[bufferSize];
-	wigth = 1920;
-	high = 1080;
+	wigth = 1280;
+	high = 720;
+	blockSize = 4;
 }
-
+//120
 getVideo::~getVideo() {
 	delete[]buffer;
 }
@@ -35,7 +36,6 @@ void getVideo::recvVideo() {
 	int size = 0;
 	int flag = 0;
 	SetEvent(hEvent);
-
 	std::ofstream desFile;
 	desFile.open(desFileName, std::ios::binary);
 	int getSize = 10;
@@ -50,6 +50,7 @@ void getVideo::recvVideo() {
 		int len0 = recv(recvSocket, buffer + pos, fileSize - pos, 0);
 		pos += len0;
 	}
+	printf("%d\n", fileSize);
 	desFile.write(buffer, fileSize);
 	cv::Mat img;
 	desFile.close();
@@ -69,20 +70,58 @@ void getVideo::recvVideo() {
 			int len0 = recv(recvSocket, buffer + pos, fileSize - pos, 0);
 			pos += len0;
 		}
-		for (int i = 0; i < fileSize; i += 74) {
-			int pos = charToInt(i);
-			int x = pos / 10000;
-			int y = pos % 10000;
-			int size = i + 10;
-			for (int insideX = 0; insideX < 8; insideX++) {
-				for (int insideY = 0; insideY < 8; insideY++) {	
-					int pos = (((y + insideY) * wigth) + (x + insideX));
-					img.data[pos] = buffer[size++];
+		for (int i = 0; i < fileSize;) {//ºá ÓÒÏÂ ×óÏÂ Êú
+			int x = buffer[i++] * 127;
+			x += buffer[i++];
+			int y = buffer[i++] * 127;
+			y += buffer[i++];
+			int type = buffer[i++];
+			if (type == 1) {
+				for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//ºá
+					for (int insideX = 0; insideX < blockSize; insideX++) {
+						for (int j = 0; j < 3; j++) {
+							img.data[(((y + insideY + j) * wigth) + (x + insideX))] = buffer[i + insideX * 3 + j];
+						}
+					}
 				}
+				i += blockSize * 3;
+			}
+			else if (type == 2) {
+				for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//ÓÒÏÂ
+					for (int insideX = 0; insideX < blockSize; insideX++) {
+						int com = insideY / 3 + insideX;
+						for (int j = 0; j < 3; j++) {
+							img.data[(((y + insideY + j) * wigth) + (x + insideX))] = buffer[i + com + j];
+						}
+					}
+				}
+				i += (blockSize * 2 - 1) * 3;
+			}
+			else if (type == 3) {
+				for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//×óÏÂ
+					for (int insideX = 0; insideX < blockSize; insideX++) {
+						int com = insideX - insideY / 3;
+						com += blockSize;
+						for (int j = 0; j < 3; j++) {
+							img.data[(((y + insideY + j) * wigth) + (x + insideX))] = buffer[i + com + j];
+						}
+					}
+				}
+				i += (blockSize * 2 - 1) * 3;
+			}
+			else {
+				for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//Êú
+					for (int insideX = 0; insideX < blockSize; insideX++) {
+						for (int j = 0; j < 3; j++) {
+							img.data[(((y + insideY + j) * wigth) + (x + insideX))] = buffer[i + (insideY / 3) + j];
+						}
+					}
+				}
+				i += blockSize * 3;
 			}
 		}
 		imshow("¿ØÖÆ", img);
-		cv::waitKey(10);
+		cv::waitKey(1);
 	}
 }
 

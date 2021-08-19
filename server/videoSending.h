@@ -10,6 +10,7 @@ class screenShots;
 class videoSending
 {
 private:
+	int blockSize;
 	int wigth;
 	int high;
 	screenShots* screenshots;
@@ -25,7 +26,7 @@ public:
 	int makeCode(cv::Mat,cv::Mat);
 	int getFileSize(const char*);
 	void sizeToChar(int, int);
-	void setBuffer(cv::Mat, cv::Mat, int, int, int);
+	int setBuffer(cv::Mat, cv::Mat, int, int, int);
 	void sendVideo();
 	void listeningClient();
 	void setClientIP(char[]);

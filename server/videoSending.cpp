@@ -1,11 +1,13 @@
 #include "videoSending.h"
 #include <fstream>
 #include <iostream>
+#include <cmath>
 #include "screenShots.h"
 
 videoSending::videoSending() {
 	wigth = 1920;
 	high = 1080;
+	blockSize = 4;
 	screenshots = new screenShots;
 	bufferSize = 50000000;
 	buffer = new char[bufferSize];
@@ -26,30 +28,155 @@ int videoSending::getFileSize(const char* strFileName) {
 	return size;
 }
 
-void videoSending::setBuffer(cv::Mat last, cv::Mat next, int size, int x, int y) {//74位一个块
+int videoSending::setBuffer(cv::Mat last, cv::Mat next, int size, int x, int y) {//横 右下 左下 竖
 	int sum = size;
-	sizeToChar(x * 10000 + y, size);
-	size += 10;
-	for (int insideX = 0; insideX < 8; insideX++) {
-		for (int insideY = 0; insideY < 8; insideY++) {
-			int pos = (((y + insideY) * wigth) + (x + insideX));
-			buffer[size++] = next.data[pos];
+	buffer[sum] = x / 127;
+	buffer[sum + 1] = x % 127;
+	buffer[sum + 2] = y / 127;
+	buffer[sum + 3] = y % 127;
+	sum += 4;
+	int now = 0;
+	for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//横
+		for (int insideX = 0; insideX < blockSize; insideX++) {
+			for (int i = 0; i < 3; i++) {
+				int pos = next.data[(((y + insideY + i) * wigth) + (x + insideX))];
+				int buf = next.data[(((y + i) * wigth) + (x + insideX))];
+				now += abs(pos - buf);
+			}
 		}
 	}
+	int mindif = now;
+	int type = 1;
+	now = 0;
+	for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//右下
+		for (int insideX = 0; insideX < blockSize; insideX++) {
+			int com = insideY / 3 + insideX;
+			int ix = 0;
+			int iy = 0;
+			if (com % 2 == 0) {
+				ix = com / 2;
+				iy = com / 2 * 3;
+			}
+			else {
+				ix = com / 2;
+				iy = (ix + 1) * 3;
+			}
+			for (int i = 0; i < 3; i++) {
+				int pos = next.data[(((y + insideY + i) * wigth) + (x + insideX))];
+				int buf = next.data[(((y + iy + i) * wigth) + (x + ix))];
+				now += abs(pos - buf);
+			}
+		}
+	}
+	if (now < mindif) {
+		mindif = now;
+		type = 2;
+	}
+	now = 0;
+	for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//左下
+		for (int insideX = 0; insideX < blockSize; insideX++) {
+			int com = insideX - insideY / 3;
+			int ix = 0;
+			int iy = 0;
+			if (com >= 0) {
+				ix = com;
+				iy = 0;
+			}
+			else {
+				ix = 0;
+				iy = (-com) * 3;
+			}
+			for (int i = 0; i < 3; i++) {
+				int pos = next.data[(((y + insideY + i) * wigth) + (x + insideX))];
+				int buf = next.data[(((y + iy + i) * wigth) + (x + ix))];
+				now += abs(pos - buf);
+			}
+		}
+	}
+	if (now < mindif) {
+		mindif = now;
+		type = 3;
+	}
+	now = 0;
+	for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {//竖
+		for (int insideX = 0; insideX < blockSize; insideX++) {
+			for (int i = 0; i < 3; i++) {
+				int pos = next.data[(((y + insideY + i) * wigth) + (x + insideX))];
+				int buf = next.data[(((y + insideY + i) * wigth) + (x))];
+				now += abs(pos - buf);
+			}
+		}
+	}
+	if (now < mindif) {
+		mindif = now;
+		type = 4;
+	}
+	buffer[sum++] = type;
+	if (type == 1) {//横
+		for (int insideX = 0; insideX < blockSize; insideX++) {
+			for (int i = 0; i < 3; i++) {
+				buffer[sum++] = next.data[(((y + i) * wigth) + (x + insideX))];
+			}
+		}
+	}
+	else if (type == 2) {//右下
+		int k = blockSize * 2 - 1;
+		for (int com = 0; com < k; com++) {
+			int ix = 0;
+			int iy = 0;
+			if (com % 2 == 0) {
+				ix = com / 2;
+				iy = com / 2 * 3;
+			}
+			else {
+				ix = com / 2;
+				iy = (ix + 1) * 3;
+			}
+			for (int i = 0; i < 3; i++) {
+				buffer[sum++] = next.data[(((y + iy + i) * wigth) + (x + ix))];
+			}
+		}
+	}
+	else if (type == 3) {//左下
+		int k = blockSize * 2 - 1;
+		for (int com = 0; com < k; com++) {
+			int ix = 0;
+			int iy = 0;
+			if (com - blockSize + 1 >= 0) {
+				ix = com;
+				iy = 0;
+			}
+			else {
+				ix = 0;
+				iy = (-(com - blockSize + 1)) * 3;
+			}
+		//	printf("%d %d %d %d\n", ix, iy, x, y);
+			for (int i = 0; i < 3; i++) {
+				buffer[sum++] = next.data[(((y + iy + i) * wigth) + (x + ix))];
+			}
+		}
+	}
+	else {//竖
+		for (int insideY = 0; insideY < blockSize * 3; insideY += 3) {
+			for (int i = 0; i < 3; i++) {
+				buffer[sum++]= next.data[(((y + insideY + i) * wigth) + (x))];
+			}
+		}
+	}
+	return sum - size;
 }
 int videoSending::makeCode(cv::Mat last, cv::Mat next) {
 	int size = 10;
 	unsigned char* lastData = last.data;
 	unsigned char* nextData = next.data;
-	for (int x = 0; x < wigth; x += 8) {
-		for (int y = 0; y < high * 3; y += 8) {
-			for (int insideX = 0; insideX < 8; insideX++) {
-				int flag = 0;
-				for (int insideY = 0; insideY < 8; insideY++) {
+	for (int x = 0; x < wigth; x += blockSize) {
+		for (int y = 0; y < high * 3; y += blockSize * 3) {
+			int flag = 0;
+			for (int insideX = 0; insideX < blockSize; insideX++) {
+				for (int insideY = 0; insideY < blockSize * 3; insideY++) {
 					int pos = (((y + insideY) * wigth) + (x + insideX));
 					if (lastData[pos] != nextData[pos]) {
-						setBuffer(last, next, size, x, y);
-						size += 74;
+						size += setBuffer(last, next, size, x, y);
 						flag = 1;
 						break;
 					}
@@ -66,7 +193,7 @@ void videoSending::setClientIP(char IP[]) {
 	clientIP = IP;
 }
 
-void videoSending::sizeToChar(int size, int pos) {//10 
+void videoSending::sizeToChar(int size, int pos) {
 	for (int i = 9; i >= 0; i--) {
 		buffer[i + pos] = size % 10 + '0';
 		size /= 10;
@@ -91,18 +218,18 @@ void videoSending::sendVideo() {
 		readLen = srcFile.gcount();
 		send(sendSocket, buffer, readLen, 0);
 		haveSend += readLen;
-	}
+	}	
 	cv::Mat last;
 	cv::Mat next;
-	while (1) {
+	while (true) {
 		last = cv::imread(srcFileName, 1);
 		screenshots->printBmp(srcFileName);
 		next = cv::imread(srcFileName, 1);
 		size = makeCode(last, next);
+	//	printf("%d\n", size);
 		sizeToChar(size, 0);
-		printf("%d\n", size);
 		send(sendSocket, buffer, size, 0);
-		Sleep(20);
+		Sleep(50);
 	}
 }
 
